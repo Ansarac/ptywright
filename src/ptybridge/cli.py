@@ -23,8 +23,8 @@ def build_parser():
 
     sp = sub.add_parser("serve", help="host a shell inside a ConPTY (run in your good terminal)")
     sp.add_argument("--shell", default="pwsh.exe", help="shell to spawn (default: pwsh.exe)")
-    sp.add_argument("--cols", type=int, default=120)
-    sp.add_argument("--rows", type=int, default=50)
+    sp.add_argument("--cols", type=int, default=None, help="ConPTY width (default: this terminal's width)")
+    sp.add_argument("--rows", type=int, default=None, help="ConPTY height (default: this terminal's height)")
     sp.add_argument("--quiet", action="store_true", help="don't mirror the session to this console")
 
     se = sub.add_parser("send", help="inject input into the session")

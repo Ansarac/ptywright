@@ -9,6 +9,7 @@ logon — which is the whole point: it sidesteps the broken headless environment
 from __future__ import annotations
 
 import ctypes
+import shutil
 import sys
 import threading
 import time
@@ -63,22 +64,43 @@ def _append(path, text: str) -> None:
 def serve(
     session: Session,
     shell: str = "pwsh.exe",
-    cols: int = 120,
-    rows: int = 50,
+    cols: int | None = None,
+    rows: int | None = None,
     *,
     quiet: bool = False,
 ) -> int:
-    """Host `shell` inside a ConPTY and bridge it to the session directory."""
+    """Host `shell` inside a ConPTY and bridge it to the session directory.
+
+    `cols`/`rows` default to the *real* terminal's size. That match matters:
+    the shell's line editor (PSReadLine) redraws input with absolute cursor
+    moves (``CSI row;col H``) computed against the pseudo-console's screen. If
+    that screen is a different size than the terminal we mirror into, the
+    redraws land on the wrong rows and scramble earlier output.
+    """
     try:
         from winpty import PtyProcess
     except ImportError as e:  # pragma: no cover - import guard
         raise SystemExit("pywinpty is required for `serve`: pip install pywinpty") from e
+
+    if cols is None or rows is None:
+        size = shutil.get_terminal_size(fallback=(120, 50))
+        cols = cols or size.columns
+        rows = rows or size.lines
 
     _enable_vt_console()
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
+    if not quiet:
+        # Start the mirror from a clean, homed screen so its coordinates line up
+        # with the fresh pseudo-console (otherwise absolute cursor moves from the
+        # shell overwrite whatever was already on this terminal).
+        try:
+            sys.stdout.write("\x1b[2J\x1b[3J\x1b[H")
+            sys.stdout.flush()
+        except Exception:
+            pass
 
     session.ensure()
     session.clear_spool()  # drop any keystrokes queued against a previous (crashed) session
@@ -92,9 +114,9 @@ def serve(
 
     banner = f"[ptybridge] session '{session.name}' up - shell={shell} pid={proc.pid}\r\n"
     _append(session.out_log, banner)
-    if not quiet:
-        sys.stdout.write(banner)
-        sys.stdout.flush()
+    # Note: the banner is logged but intentionally NOT mirrored to stdout — an extra
+    # line here would push the shell's screen down one row relative to the pseudo-console
+    # and re-introduce the absolute-cursor misalignment we just cleared the screen to avoid.
 
     stop = threading.Event()
 
