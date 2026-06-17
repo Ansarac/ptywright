@@ -115,3 +115,24 @@ def test_cli_snapshot_no_size_errors(tmp_path, capsys):
     rc = main(["-s", "snap", "--root", str(tmp_path), "snapshot"])
     assert rc == 1
     assert "unknown screen size" in capsys.readouterr().err
+
+
+def test_cli_snapshot_survives_non_gbk_glyph(tmp_path, monkeypatch):
+    # Regression: on a CP936/GBK console, print()ing a Nerd Font / box-drawing glyph
+    # (U+E62A, a private-use powerline icon) raised UnicodeEncodeError. main()
+    # reconfigures stdout to UTF-8 so the snapshot of a real TUI prompt survives.
+    import io
+    import sys
+
+    glyph = chr(0xE62A)  # not encodable in GBK
+    buf = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(buf, encoding="gbk", errors="strict"))
+
+    s = Session("glyph", root=tmp_path).ensure()
+    s.write_meta(shell="pwsh.exe", pid=1, cols=10, rows=1)
+    s.out_log.write_bytes(f"ab{glyph}cd".encode())
+
+    rc = main(["-s", "glyph", "--root", str(tmp_path), "snapshot"])
+    assert rc == 0
+    sys.stdout.flush()
+    assert glyph in buf.getvalue().decode("utf-8")

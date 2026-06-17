@@ -28,6 +28,17 @@ Look for `ready : True`. If it is not ready, ask the human to run `ptywright ser
 `--shell cmd.exe`) in a real terminal and leave it open. Everything below is run from your own
 shell; add `-s <name>` to target a non-default session.
 
+**`ready : True` can lie.** The `ready` file is removed only on a *clean* exit; if the host was
+force-killed (not `Ctrl-C`), it lingers and `status` still reports the dead pid as ready. Before
+trusting a session, confirm the `pid` from `status` is actually alive, or send a sentinel and
+check it lands:
+
+```
+ptywright send --line "echo __ALIVE__$(Get-Random)"   # then snapshot/read for the echo
+```
+
+If nothing echoes back, the host is dead — ask the human to re-`serve`.
+
 ## The core loop
 
 1. **Send** input (text and/or named keys).
@@ -75,6 +86,11 @@ When in doubt for an interactive UI, use `snapshot`. For "what did that command 
 
 ## Gotchas
 
+- **Drive with the `ptywright` on your PATH, not `uv run` inside the repo.** The host holds the
+  project's `.venv\Scripts\ptywright.exe` open, so a bare `uv run ptywright ...` in the repo tries
+  to re-sync that venv and fails with *Access is denied (os error 5)* — and a failed `read` can
+  come back silently empty. Install once with `ptywright install-skill`'s companion
+  `uv tool install .` (or `uv run --no-sync ptywright` if you must run from the repo).
 - **Let the screen settle.** If a `snapshot` looks mid-redraw or a `read` is empty, wait longer
   and look again. There is no "command done" signal — you infer it from the screen (a prompt
   returned, a marker line appeared).
@@ -83,6 +99,9 @@ When in doubt for an interactive UI, use `snapshot`. For "what did that command 
   console `CTRL_C_EVENT`, so it won't stop an already-running foreground command. To truly stop
   the session, the human presses `Ctrl-C` in the `serve` terminal.
 - **One shell per session.** If the shell exits, the session ends; ask the human to re-`serve`.
+- **Encoding.** `snapshot` and `watch` emit UTF-8, so Nerd Font / box-drawing glyphs from a TUI
+  survive even on a CP936/GBK (e.g. Chinese) Windows console. If your *own* terminal still mangles
+  them, prefix the command with `PYTHONUTF8=1`, or use `snapshot --json` and read the `lines`.
 - **Use a marker when you need certainty.** To know a command finished, have it echo a sentinel
   (`... ; echo __DONE__`) and poll `read`/`snapshot` until the sentinel shows up.
 

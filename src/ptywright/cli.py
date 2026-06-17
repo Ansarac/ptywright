@@ -69,6 +69,15 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     sess = Session(args.session, root=args.root)
 
+    # The rendered screen (snapshot) and the tailed log (watch) are *text*; on a
+    # CP936/GBK console `print` of a Nerd Font / box-drawing glyph would raise
+    # UnicodeEncodeError. Force UTF-8 so a full-screen TUI snapshot survives.
+    # (`read` writes raw bytes via stdout.buffer and is unaffected.)
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
     if args.cmd == "serve":
         from . import server
 
