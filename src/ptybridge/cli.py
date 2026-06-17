@@ -123,10 +123,19 @@ def _read(sess: Session, offset: int) -> int:
     if not path.exists():
         sys.stderr.write("[offset 0]\n")
         return 0
-    data = path.read_bytes()
-    sys.stdout.buffer.write(data[offset:])
-    sys.stdout.flush()
-    sys.stderr.write(f"\n[offset {len(data)}]\n")  # next --offset to resume from
+    with open(path, "rb") as f:
+        size = f.seek(0, 2)  # end; byte length of the log
+        # An offset past EOF means the log was truncated by a newer serve run; realign to 0.
+        f.seek(offset if 0 <= offset <= size else 0)
+        out = sys.stdout.buffer
+        while True:  # stream in chunks so a huge tail never lands in memory at once
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            out.write(chunk)
+        sys.stdout.flush()
+        end = f.tell()
+    sys.stderr.write(f"\n[offset {end}]\n")  # next --offset to resume from
     return 0
 
 

@@ -58,7 +58,7 @@ uv run ptybridge serve
 ```powershell
 uv run ptybridge send --line "cd C:\Users\me\repo"
 uv run ptybridge send --line ".\build.ps1 -Release"
-uv run ptybridge send --key ctrl-c          # interrupt
+uv run ptybridge send --key ctrl-c          # inject Ctrl-C (0x03) — see Limitations
 uv run ptybridge send "y" --key enter       # answer a y/n prompt
 ```
 
@@ -126,6 +126,11 @@ one can drive a session — no client library required.
   *(planned: optional `ptybridge snapshot`.)*
 - One shell per session; the server exits when that shell exits (re-run `serve` to restart).
   *(planned: optional auto-respawn.)*
+- `send --key ctrl-c` injects the `0x03` byte. That edits the current input line and feeds
+  apps that read `0x03` as input, but under ConPTY it is **not** translated into a console
+  `CTRL_C_EVENT`, so it does **not** reliably interrupt an already-running foreground command
+  (true for `pwsh` and `cmd` alike). To stop a runaway command, send a targeted kill or close
+  the session. Pressing `Ctrl-C` in the `serve` terminal stops the whole session cleanly.
 - Windows-only by design (ConPTY). The transport layer is portable; a POSIX `serve` backend
   could be added, but on Unix you'd just use tmux.
 
