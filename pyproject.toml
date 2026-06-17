@@ -24,6 +24,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/ptywright"]
 
+# Ship the Claude Code skill inside the wheel so `ptywright install-skill` works after
+# `uv tool install .` (in a source checkout it falls back to skills/ptywright/SKILL.md).
+[tool.hatch.build.targets.wheel.force-include]
+"skills/ptywright/SKILL.md" = "ptywright/_skill/SKILL.md"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",

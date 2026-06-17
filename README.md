@@ -100,6 +100,7 @@ uv run ptywright snapshot --json             # {cols, rows, cursor:{x,y}, lines:
 | `read`   | Print output bytes from `--offset`; emits the new end offset on stderr (for scripted incremental reads). |
 | `snapshot` | Replay `out.log` through a VT screen model ([`pyte`](https://github.com/selectel/pyte)) sized from `meta.json` and print the **rendered** screen grid — what a full-screen TUI currently shows, not its scrollback. `--json` for `{cols, rows, cursor, lines}`; `--cols`/`--rows` override the size. |
 | `status` | Show whether the session is ready, its pid/meta, and exit status. |
+| `install-skill` | Install the bundled Claude Code skill into `~/.claude/skills` (`--dest`, `--force`, `--print`). |
 
 Global: `-s/--session NAME` (default `default`) and `--root DIR` (default `~/.ptywright`)
 select the session, so you can run several at once.
@@ -116,6 +117,21 @@ ptywright send -K esc "q" --key enter          # prefix key, text, suffix key
 
 Named keys: `enter cr lf tab space esc backspace ctrl-c ctrl-d ctrl-z ctrl-l
 up down left right home end`, or a raw `\xNN` byte.
+
+## Use it from a coding agent (Claude Code skill)
+
+`ptywright` ships a [Claude Code](https://claude.com/claude-code) skill so a headless agent
+knows the driver-side workflow — a human hosts the shell with `serve`; the agent does
+`send` → `snapshot`/`read` to operate a TUI or answer prompts. Install it once:
+
+```powershell
+uv run ptywright install-skill          # -> ~/.claude/skills/ptywright/SKILL.md
+uv run ptywright install-skill --print  # inspect it without installing
+```
+
+The skill source lives at [`skills/ptywright/SKILL.md`](skills/ptywright/SKILL.md); you can also
+copy it there by hand. Pass `--dest DIR` for a project-local `.claude/skills`, or `--force` to
+overwrite.
 
 ## Session directory layout
 

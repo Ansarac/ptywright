@@ -57,6 +57,11 @@ def build_parser():
     sn.add_argument("--cols", type=int, default=None, help="override screen width (default: meta.json cols)")
     sn.add_argument("--rows", type=int, default=None, help="override screen height (default: meta.json rows)")
 
+    ik = sub.add_parser("install-skill", help="install the Claude Code skill into ~/.claude/skills")
+    ik.add_argument("--dest", default=None, help="skills dir (default: ~/.claude/skills)")
+    ik.add_argument("--force", action="store_true", help="overwrite an existing SKILL.md")
+    ik.add_argument("--print", dest="print_only", action="store_true", help="print the skill to stdout, don't install")
+
     return p
 
 
@@ -100,6 +105,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "snapshot":
         return _snapshot(sess, json_out=args.json, cols=args.cols, rows=args.rows)
+
+    if args.cmd == "install-skill":
+        return _install_skill(dest=args.dest, force=args.force, print_only=args.print_only)
 
     return 1
 
@@ -174,6 +182,43 @@ def _snapshot(sess: Session, *, json_out: bool, cols: int | None, rows: int | No
         print(json.dumps(snap.to_dict(), ensure_ascii=False, indent=2))
     else:
         print(snap.to_text())
+    return 0
+
+
+def _skill_text() -> str:
+    """Load the bundled SKILL.md — from the wheel's package data, or the source tree."""
+    from importlib.resources import files
+    from pathlib import Path
+
+    try:  # installed wheel: force-included at ptywright/_skill/SKILL.md
+        res = files("ptywright").joinpath("_skill/SKILL.md")
+        if res.is_file():
+            return res.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, OSError):
+        pass
+    # source checkout / editable install: repo-root skills/ptywright/SKILL.md
+    src = Path(__file__).resolve().parents[2] / "skills" / "ptywright" / "SKILL.md"
+    if src.is_file():
+        return src.read_text(encoding="utf-8")
+    raise SystemExit("could not locate the bundled SKILL.md")
+
+
+def _install_skill(*, dest: str | None, force: bool, print_only: bool) -> int:
+    from pathlib import Path
+
+    text = _skill_text()
+    if print_only:
+        sys.stdout.write(text)
+        return 0
+
+    base = Path(dest) if dest else Path.home() / ".claude" / "skills"
+    target = base / "ptywright" / "SKILL.md"
+    if target.exists() and not force:
+        sys.stderr.write(f"{target} already exists; pass --force to overwrite\n")
+        return 1
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    print(f"installed ptywright skill -> {target}")
     return 0
 
 
