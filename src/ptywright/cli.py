@@ -52,6 +52,11 @@ def build_parser():
     r = sub.add_parser("read", help="print output bytes from an offset (for scripted drivers)")
     r.add_argument("--offset", type=int, default=0)
 
+    sn = sub.add_parser("snapshot", help="render the current screen grid from out.log (for TUIs)")
+    sn.add_argument("--json", action="store_true", help="emit {cols, rows, cursor, lines} as JSON")
+    sn.add_argument("--cols", type=int, default=None, help="override screen width (default: meta.json cols)")
+    sn.add_argument("--rows", type=int, default=None, help="override screen height (default: meta.json rows)")
+
     return p
 
 
@@ -92,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "read":
         return _read(sess, args.offset)
+
+    if args.cmd == "snapshot":
+        return _snapshot(sess, json_out=args.json, cols=args.cols, rows=args.rows)
 
     return 1
 
@@ -136,6 +144,36 @@ def _read(sess: Session, offset: int) -> int:
         sys.stdout.flush()
         end = f.tell()
     sys.stderr.write(f"\n[offset {end}]\n")  # next --offset to resume from
+    return 0
+
+
+def _snapshot(sess: Session, *, json_out: bool, cols: int | None, rows: int | None) -> int:
+    from .snapshot import render
+
+    path = sess.out_log
+    if not path.exists():
+        sys.stderr.write(f"no output log for session '{sess.name}' ({path}); is it serving?\n")
+        return 1
+
+    data = path.read_bytes()
+    if not data.strip():
+        sys.stderr.write(f"session '{sess.name}' has produced no output yet\n")
+        return 1
+
+    meta = sess.read_meta()
+    cols = cols or meta.get("cols")
+    rows = rows or meta.get("rows")
+    if not cols or not rows:
+        sys.stderr.write("unknown screen size: no meta.json cols/rows; pass --cols and --rows\n")
+        return 1
+
+    snap = render(data, cols, rows)
+    if json_out:
+        import json
+
+        print(json.dumps(snap.to_dict(), ensure_ascii=False, indent=2))
+    else:
+        print(snap.to_text())
     return 0
 
 

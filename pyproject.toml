@@ -11,6 +11,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pywinpty>=2.0.13 ; sys_platform == 'win32'",  # ConPTY bindings (serve only)
+    "pyte>=0.8.2",  # VT screen model for `snapshot` (render out.log into a screen grid)
 ]
 
 [project.scripts]
@@ -48,8 +49,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/ptywright/cli.py" = ["T201", "PLC0415", "PLR0911", "PTH123"]
+"src/ptywright/cli.py" = ["T201", "PLC0415", "PLR0911", "PTH123", "C901"]
 # serve() is one linear host loop; splitting it would hurt readability. open() over Path
 # is deliberate (append handle held across the read loop).
 "src/ptywright/server.py" = ["PLC0415", "PTH123", "C901", "PLR0912", "PLR0915", "PTH107", "SIM105", "TC001"]
+# snapshot defers the pyte import so the stdlib-only commands run without it (like server/winpty).
+"src/ptywright/snapshot.py" = ["PLC0415"]
 "tests/*" = ["S101", "INP001", "T201", "PLC0415", "PT011", "S604"]

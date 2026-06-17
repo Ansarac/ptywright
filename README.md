@@ -45,6 +45,8 @@ a small file and read a growing one can be the driver — no client library requ
 - Python ≥ 3.13, [`uv`](https://docs.astral.sh/uv/).
 - [`pywinpty`](https://pypi.org/project/pywinpty/) (installed automatically by uv; only the
   `serve` command needs it — `send`/`watch`/`status`/`read` are pure stdlib).
+- [`pyte`](https://pypi.org/project/pyte/) (installed automatically by uv; only `snapshot`
+  needs it, to render the screen grid).
 
 ## Install
 
@@ -80,6 +82,14 @@ uv run ptywright watch                       # read-only attach, Ctrl-C to detac
 uv run ptywright read --offset 0             # print output; prints next offset on stderr
 ```
 
+`watch`/`read` give you the raw scrollback. To see what a *full-screen* TUI is currently
+drawing — the rendered screen, not the byte stream that drew it — use `snapshot`:
+
+```powershell
+uv run ptywright snapshot                    # print the current screen grid as text
+uv run ptywright snapshot --json             # {cols, rows, cursor:{x,y}, lines:[...]}
+```
+
 ## Commands
 
 | command | what it does |
@@ -88,6 +98,7 @@ uv run ptywright read --offset 0             # print output; prints next offset 
 | `send`   | Encode text + named keys into one raw input chunk and spool it for injection. |
 | `watch`  | Tail `out.log` live (read-only attach). |
 | `read`   | Print output bytes from `--offset`; emits the new end offset on stderr (for scripted incremental reads). |
+| `snapshot` | Replay `out.log` through a VT screen model ([`pyte`](https://github.com/selectel/pyte)) sized from `meta.json` and print the **rendered** screen grid — what a full-screen TUI currently shows, not its scrollback. `--json` for `{cols, rows, cursor, lines}`; `--cols`/`--rows` override the size. |
 | `status` | Show whether the session is ready, its pid/meta, and exit status. |
 
 Global: `-s/--session NAME` (default `default`) and `--root DIR` (default `~/.ptywright`)
@@ -132,9 +143,11 @@ one can drive a session — no client library required.
 ## Limitations / roadmap
 
 - `out.log` is the raw VT byte stream (full scrollback) — ideal for line-oriented build
-  output. It is **not** a rendered screen grid, so a snapshot of a full-screen TUI's current
-  display needs a VT screen model. *(planned: `ptywright snapshot`, rendering the live screen
-  with [`pyte`](https://github.com/selectel/pyte) — the natural companion to driving TUIs.)*
+  output. It is **not** a rendered screen grid, so to snapshot a full-screen TUI's current
+  display use `ptywright snapshot`, which replays the stream through a
+  [`pyte`](https://github.com/selectel/pyte) screen sized from `meta.json` and prints the
+  rendered grid (text, or `--json` with cursor position). Note it renders the *whole* log from
+  the start of the session, so an `out.log` with megabytes of scrollback is replayed each call.
 - `send --key ctrl-c` injects the `0x03` byte. That edits the current input line and feeds
   apps that read `0x03` as input, but under ConPTY it is **not** translated into a console
   `CTRL_C_EVENT`, so it does **not** reliably interrupt an already-running foreground command
