@@ -1,12 +1,12 @@
-# ptybridge — drive a persistent native-Windows shell from outside it.
+# ptywright — a scriptable driver for interactive terminal programs on Windows.
 #
 # Standalone uv project (its own repo). Mirrors the trx-vital tools/ conventions:
 # uv + Python 3.13, src layout, hatchling build, console script, ruff (ALL),
 # pytest. Not a member of any workspace — it ships on its own.
 [project]
-name = "ptybridge"
+name = "ptywright"
 version = "0.1.0"
-description = "Drive a persistent native-Windows shell (pwsh) inside a ConPTY from an external process — a minimal tmux/shpool for Windows, file-spool transport."
+description = "A scriptable driver for interactive terminal programs on native Windows: launch a real shell/TUI inside a ConPTY, inject keystrokes, and read back output — over a dependency-light file-spool transport."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -14,14 +14,14 @@ dependencies = [
 ]
 
 [project.scripts]
-ptybridge = "ptybridge.cli:main"
+ptywright = "ptywright.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ptybridge"]
+packages = ["src/ptywright"]
 
 [dependency-groups]
 dev = [
@@ -48,8 +48,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/ptybridge/cli.py" = ["T201", "PLC0415", "PLR0911", "PTH123"]
+"src/ptywright/cli.py" = ["T201", "PLC0415", "PLR0911", "PTH123"]
 # serve() is one linear host loop; splitting it would hurt readability. open() over Path
 # is deliberate (append handle held across the read loop).
-"src/ptybridge/server.py" = ["PLC0415", "PTH123", "C901", "PLR0912", "PLR0915", "PTH107", "SIM105", "TC001"]
+"src/ptywright/server.py" = ["PLC0415", "PTH123", "C901", "PLR0912", "PLR0915", "PTH107", "SIM105", "TC001"]
 "tests/*" = ["S101", "INP001", "T201", "PLC0415", "PT011", "S604"]

@@ -1,6 +1,6 @@
 """Session layout + input encoding for the file-spool transport.
 
-A ptybridge *session* is a directory shared between the server (which owns the
+A ptywright *session* is a directory shared between the server (which owns the
 ConPTY) and any number of drivers / watchers:
 
     <session>/
@@ -22,7 +22,7 @@ import os
 import time
 from pathlib import Path
 
-DEFAULT_ROOT = Path.home() / ".ptybridge"
+DEFAULT_ROOT = Path.home() / ".ptywright"
 
 # Named keys -> the bytes a real terminal would send for them.
 KEYS: dict[str, bytes] = {

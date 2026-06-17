@@ -112,7 +112,7 @@ def serve(
     session.write_meta(shell=shell, pid=proc.pid, cols=cols, rows=rows, started=time.time())
     session.ready_file.write_text(str(proc.pid), encoding="utf-8")
 
-    banner = f"[ptybridge] session '{session.name}' up - shell={shell} pid={proc.pid}\r\n"
+    banner = f"[ptywright] session '{session.name}' up - shell={shell} pid={proc.pid}\r\n"
     _append(session.out_log, banner)
     # Note: the banner is logged but intentionally NOT mirrored to stdout — an extra
     # line here would push the shell's screen down one row relative to the pseudo-console
@@ -171,7 +171,7 @@ def serve(
         except Exception:
             pass
         why = "interrupted (Ctrl-C); session stopped" if interrupted else f"shell exited (code={code}); session stopped"
-        msg = f"\r\n[ptybridge] {why}\r\n"
+        msg = f"\r\n[ptywright] {why}\r\n"
         _append(session.out_log, msg)
         session.status_file.write_text(
             ("interrupted\n" if interrupted else f"exited code={code}\n"), encoding="utf-8"

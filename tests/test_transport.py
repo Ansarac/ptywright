@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from ptybridge.transport import KEYS, Session, encode_keys, key_bytes
+from ptywright.transport import KEYS, Session, encode_keys, key_bytes
 
 
 def test_plain_text():

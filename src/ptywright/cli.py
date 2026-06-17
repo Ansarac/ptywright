@@ -13,12 +13,12 @@ def build_parser():
     import argparse
 
     p = argparse.ArgumentParser(
-        prog="ptybridge",
+        prog="ptywright",
         description="Drive a persistent native-Windows shell hosted inside a ConPTY.",
     )
-    p.add_argument("--version", action="version", version=f"ptybridge {__version__}")
+    p.add_argument("--version", action="version", version=f"ptywright {__version__}")
     p.add_argument("-s", "--session", default="default", help="session name (default: 'default')")
-    p.add_argument("--root", default=None, help="sessions root dir (default: ~/.ptybridge)")
+    p.add_argument("--root", default=None, help="sessions root dir (default: ~/.ptywright)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("serve", help="host a shell inside a ConPTY (run in your good terminal)")

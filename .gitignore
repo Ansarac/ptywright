@@ -10,7 +10,7 @@ dist/
 .mypy_cache/
 
 # Runtime sessions (out.log, spool, meta) — never committed
-.ptybridge/
+.ptywright/
 
 # smoke-test root
 .smokeroot/
