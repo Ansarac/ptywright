@@ -90,6 +90,24 @@ class Session:
         except (OSError, ValueError):
             return {}
 
+    def clear_spool(self) -> int:
+        """Delete any leftover input chunks (and stray tmps) from the spool.
+
+        Called on `serve` startup so keystrokes queued against a *previous*
+        (possibly crashed) session can't replay into the freshly spawned shell.
+        Returns the number of files removed.
+        """
+        if not self.in_dir.exists():
+            return 0
+        removed = 0
+        for f in [*self.in_dir.glob("*.bin"), *self.in_dir.glob("*.tmp")]:
+            try:
+                f.unlink()
+                removed += 1
+            except OSError:
+                pass
+        return removed
+
     def spool(self, data: bytes) -> Path:
         """Atomically drop one raw input chunk into the spool (tmp + rename)."""
         self.in_dir.mkdir(parents=True, exist_ok=True)

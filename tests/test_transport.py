@@ -74,3 +74,16 @@ def test_meta_roundtrip(tmp_path):
     s = Session("m", root=tmp_path).ensure()
     s.write_meta(shell="pwsh.exe", pid=1234)
     assert s.read_meta()["pid"] == 1234
+
+
+def test_clear_spool_removes_stale_chunks(tmp_path):
+    s = Session("c", root=tmp_path).ensure()
+    s.spool(b"echo stale\r")
+    (s.in_dir / "leftover.tmp").write_bytes(b"half")
+    assert s.clear_spool() == 2
+    assert list(s.in_dir.glob("*")) == []
+
+
+def test_clear_spool_on_missing_dir_is_noop(tmp_path):
+    s = Session("none", root=tmp_path)  # never ensure()'d
+    assert s.clear_spool() == 0

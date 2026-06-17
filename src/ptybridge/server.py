@@ -17,6 +17,7 @@ from .transport import Session
 
 _ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 _STD_OUTPUT_HANDLE = -11
+_STD_INPUT_HANDLE = -10
 
 
 def _enable_vt_console() -> None:
@@ -29,6 +30,26 @@ def _enable_vt_console() -> None:
         mode = ctypes.c_uint32()
         if k.GetConsoleMode(h, ctypes.byref(mode)):
             k.SetConsoleMode(h, mode.value | _ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+    except Exception:
+        pass
+
+
+def _flush_console_input() -> None:
+    """Discard pending console input on teardown.
+
+    While serving, we mirror the child's raw VT output to this real console.
+    That output can include terminal *queries* (Primary Device Attributes
+    ``ESC[c``, cursor reports, ...); conhost answers them by queuing the reply
+    in *our* console input buffer. Once serve exits, the outer shell reads those
+    replies as if typed — a line of garbage (``[?61;...c``) at its prompt.
+    Flushing the input buffer on the way out drops those stray replies.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        k = ctypes.windll.kernel32
+        h = k.GetStdHandle(_STD_INPUT_HANDLE)
+        k.FlushConsoleInputBuffer(h)
     except Exception:
         pass
 
@@ -60,6 +81,7 @@ def serve(
         pass
 
     session.ensure()
+    session.clear_spool()  # drop any keystrokes queued against a previous (crashed) session
     session.out_log.write_text("", encoding="utf-8")  # truncate previous run
     if session.status_file.exists():
         session.status_file.unlink()
@@ -103,6 +125,7 @@ def serve(
     rt = threading.Thread(target=reader, daemon=True)
     rt.start()
 
+    interrupted = False
     try:
         while not stop.is_set() and proc.isalive():
             for chunk in sorted(session.in_dir.glob("*.bin")):
@@ -115,7 +138,7 @@ def serve(
                         pass
             time.sleep(0.04)
     except KeyboardInterrupt:
-        pass
+        interrupted = True  # Ctrl-C in the serve terminal => stop the session cleanly
     finally:
         stop.set()
         rt.join(timeout=3)
@@ -125,9 +148,12 @@ def serve(
                 proc.terminate(force=True)
         except Exception:
             pass
-        msg = f"\r\n[ptybridge] shell exited (code={code}); session stopped\r\n"
+        why = "interrupted (Ctrl-C); session stopped" if interrupted else f"shell exited (code={code}); session stopped"
+        msg = f"\r\n[ptybridge] {why}\r\n"
         _append(session.out_log, msg)
-        session.status_file.write_text(f"exited code={code}\n", encoding="utf-8")
+        session.status_file.write_text(
+            ("interrupted\n" if interrupted else f"exited code={code}\n"), encoding="utf-8"
+        )
         try:
             session.ready_file.unlink()
         except OSError:
@@ -135,4 +161,5 @@ def serve(
         if not quiet:
             sys.stdout.write(msg)
             sys.stdout.flush()
+        _flush_console_input()  # drop terminal query replies so they don't litter the outer prompt
     return 0
