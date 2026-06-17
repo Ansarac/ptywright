@@ -1,0 +1,16 @@
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Runtime sessions (out.log, spool, meta) — never committed
+.ptybridge/
+
+# smoke-test root
+.smokeroot/

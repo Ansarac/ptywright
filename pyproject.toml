@@ -1,0 +1,55 @@
+# ptybridge — drive a persistent native-Windows shell from outside it.
+#
+# Standalone uv project (its own repo). Mirrors the trx-vital tools/ conventions:
+# uv + Python 3.13, src layout, hatchling build, console script, ruff (ALL),
+# pytest. Not a member of any workspace — it ships on its own.
+[project]
+name = "ptybridge"
+version = "0.1.0"
+description = "Drive a persistent native-Windows shell (pwsh) inside a ConPTY from an external process — a minimal tmux/shpool for Windows, file-spool transport."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pywinpty>=2.0.13 ; sys_platform == 'win32'",  # ConPTY bindings (serve only)
+]
+
+[project.scripts]
+ptybridge = "ptybridge.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ptybridge"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.14",
+]
+
+# --- Ruff (lint + format), aligned with trx-vital tools/ ----------------------
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+extend-select = ["ALL"]
+ignore = [
+    "ANN",            # types encouraged, not enforced
+    "COM812",         # formatter conflict
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "D200", "D203", "D205", "D211", "D212", "D213", "D400", "D401", "D415",
+    "EM101", "EM102", "TRY003",  # inline exception messages — small surface
+    "G004", "PLR2004",
+    "BLE001", "S110",  # the server deliberately swallows best-effort I/O errors
+    "TC003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/ptybridge/cli.py" = ["T201", "PLC0415", "PLR0911", "PTH123"]
+# serve() is one linear host loop; splitting it would hurt readability. open() over Path
+# is deliberate (append handle held across the read loop).
+"src/ptybridge/server.py" = ["PLC0415", "PTH123", "C901", "PLR0912", "PLR0915", "PTH107", "SIM105", "TC001"]
+"tests/*" = ["S101", "INP001", "T201", "PLC0415", "PT011", "S604"]
